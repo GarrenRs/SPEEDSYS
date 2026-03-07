@@ -83,5 +83,9 @@ app.include_router(warehouse.router, prefix="/api")
 app.include_router(kitchen.router, prefix="/api")
 app.include_router(delivery.router, prefix="/api")
 
-STATIC_DIR = Path(__file__).resolve().parent / "static"
+BASE_DIR = Path(__file__).resolve().parent
+legacy_static_dir = BASE_DIR / "static"
+app_static_dir = BASE_DIR / "app" / "static"
+STATIC_DIR = legacy_static_dir if legacy_static_dir.exists() else app_static_dir
+STATIC_DIR.mkdir(parents=True, exist_ok=True)
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
