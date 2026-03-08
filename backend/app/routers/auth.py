@@ -15,6 +15,8 @@ from ..services import login_user, record_security_event, refresh_user_tokens, r
 router = APIRouter(prefix="/auth", tags=["auth"])
 SETTINGS = load_settings()
 COOKIE_SECURE = SETTINGS.is_production
+COOKIE_SAMESITE = "none" if SETTINGS.is_production else "lax"
+COOKIE_DOMAIN = SETTINGS.cookie_domain
 ACCESS_COOKIE_NAME = "access_token"
 REFRESH_COOKIE_NAME = "refresh_token"
 CSRF_COOKIE_NAME = "csrf_token"
@@ -46,7 +48,8 @@ def _set_auth_cookies(response: Response, *, access_token: str, refresh_token: s
         value=access_token,
         httponly=True,
         secure=COOKIE_SECURE,
-        samesite="lax",
+        samesite=COOKIE_SAMESITE,
+        domain=COOKIE_DOMAIN,
         max_age=ACCESS_TOKEN_TTL_MINUTES * 60,
         path="/",
     )
@@ -55,7 +58,8 @@ def _set_auth_cookies(response: Response, *, access_token: str, refresh_token: s
         value=refresh_token,
         httponly=True,
         secure=COOKIE_SECURE,
-        samesite="lax",
+        samesite=COOKIE_SAMESITE,
+        domain=COOKIE_DOMAIN,
         max_age=REFRESH_TOKEN_TTL_DAYS * 24 * 60 * 60,
         path="/",
     )
@@ -64,16 +68,17 @@ def _set_auth_cookies(response: Response, *, access_token: str, refresh_token: s
         value=csrf_token,
         httponly=False,
         secure=COOKIE_SECURE,
-        samesite="lax",
+        samesite=COOKIE_SAMESITE,
+        domain=COOKIE_DOMAIN,
         max_age=REFRESH_TOKEN_TTL_DAYS * 24 * 60 * 60,
         path="/",
     )
 
 
 def _clear_auth_cookies(response: Response) -> None:
-    response.delete_cookie(ACCESS_COOKIE_NAME, path="/")
-    response.delete_cookie(REFRESH_COOKIE_NAME, path="/")
-    response.delete_cookie(CSRF_COOKIE_NAME, path="/")
+    response.delete_cookie(ACCESS_COOKIE_NAME, path="/", domain=COOKIE_DOMAIN)
+    response.delete_cookie(REFRESH_COOKIE_NAME, path="/", domain=COOKIE_DOMAIN)
+    response.delete_cookie(CSRF_COOKIE_NAME, path="/", domain=COOKIE_DOMAIN)
 
 
 def _validate_csrf(request: Request, *, csrf_cookie: str | None) -> None:
