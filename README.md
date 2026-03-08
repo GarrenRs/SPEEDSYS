@@ -27,12 +27,19 @@
 - `JWT_SECRET` مفتاح توقيع JWT (طويل وآمن)
 - `SECRET_KEY` مفتاح سري إضافي (>= 32 حرف)
 - `CORS_ALLOW_ORIGINS` روابط الواجهة المسموح بها (مفصولة بفاصلة)
+- `COOKIE_DOMAIN` مثال: `.codexx-academy.online` لتوحيد كوكيز الجلسة بين `api.` والواجهة
+- `ADMIN_USERNAME` و`ADMIN_PASSWORD` مطلوبة في أول تشغيل إنتاجي فقط عند غياب حساب مدير
 - `EXPOSE_DIAGNOSTIC_ENDPOINTS` لتفعيل `/health`
 
 ## النشر على Render (Blueprint)
 هذا المشروع مجهز عبر `render.yaml` بخدمتين:
 1. `restaurants-api` (FastAPI)
 2. `restaurants-console` (Static Site)
+
+في حال كانت خدمة Render الحالية مضبوطة يدويًا:
+- Build Command: `./build.sh`
+- Start Command: `./start.sh`
+- ملاحظة: ترحيلات `alembic` تُنفّذ في `start.sh` على قاعدة التشغيل الفعلية.
 
 ### خطوات النشر
 1. ادفع المشروع إلى GitHub.
