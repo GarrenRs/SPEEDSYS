@@ -287,9 +287,7 @@ function normalizePayloadText<T>(value: T): T {
 async function tryRefreshAccessToken(): Promise<boolean> {
   try {
     const csrfToken = readCsrfToken();
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-    };
+    const headers: Record<string, string> = {};
     if (csrfToken) {
       headers['X-CSRF-Token'] = csrfToken;
     }
@@ -297,7 +295,6 @@ async function tryRefreshAccessToken(): Promise<boolean> {
       method: 'POST',
       credentials: 'include',
       headers,
-      body: JSON.stringify({}),
     });
 
     if (!response.ok) {
@@ -363,8 +360,8 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
 
 export const api = {
   login: (payload: LoginPayload) => request<AuthSession>('/auth/login', { method: 'POST', body: payload }),
-  refresh: () => request<AuthSession>('/auth/refresh', { method: 'POST', body: {} }),
-  logout: () => request<{ status: string }>('/auth/logout', { method: 'POST', auth: true, body: {} }),
+  refresh: () => request<AuthSession>('/auth/refresh', { method: 'POST' }),
+  logout: () => request<{ status: string }>('/auth/logout', { method: 'POST', auth: true }),
   me: () => request<User>('/auth/me', { auth: true }),
 
   publicProducts: () => request<PublicProduct[]>('/public/products'),
