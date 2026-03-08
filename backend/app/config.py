@@ -11,6 +11,7 @@ class AppSettings:
     is_production: bool
     debug: bool
     secret_key: str
+    cookie_domain: str | None
     cors_allow_origins: tuple[str, ...]
     expose_diagnostic_endpoints: bool
     jwt_alg: str
@@ -111,6 +112,7 @@ def load_settings() -> AppSettings:
         raise RuntimeError("JWT_ALG must be HS256 or HS512.")
     jwt_keyring = _load_jwt_keyring(active_kid=active_kid, is_production=is_production)
     secret_key = _resolve_secret_key(jwt_keyring=jwt_keyring, active_kid=active_kid)
+    cookie_domain = (os.getenv("COOKIE_DOMAIN") or "").strip() or None
     raw_cors = _parse_csv_env("CORS_ALLOW_ORIGINS")
     if is_production:
         cors_allow_origins = raw_cors
@@ -127,6 +129,7 @@ def load_settings() -> AppSettings:
         is_production=is_production,
         debug=debug,
         secret_key=secret_key,
+        cookie_domain=cookie_domain,
         cors_allow_origins=cors_allow_origins,
         expose_diagnostic_endpoints=expose_diagnostic_endpoints,
         jwt_alg=jwt_alg,
@@ -158,4 +161,6 @@ def load_settings() -> AppSettings:
             raise RuntimeError("PASSWORD_ARGON2_PARALLELISM must be >= 2 in production.")
         if settings.allow_legacy_password_login:
             raise RuntimeError("ALLOW_LEGACY_PASSWORD_LOGIN must be disabled in production.")
+        if settings.cookie_domain and "://" in settings.cookie_domain:
+            raise RuntimeError("COOKIE_DOMAIN must be a domain only (without protocol).")
     return settings
