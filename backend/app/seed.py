@@ -611,6 +611,80 @@ def _development_seed_password(*, env_key: str, fallback: str) -> str:
     return value or fallback
 
 
+def _production_admin_seed_credentials() -> tuple[str, str, str]:
+    username = (os.getenv("ADMIN_USERNAME") or "").strip()
+    password = (os.getenv("ADMIN_PASSWORD") or "").strip()
+    name = (os.getenv("ADMIN_NAME") or "مدير النظام").strip() or "مدير النظام"
+    return username, password, name
+
+
+def _validate_production_admin_seed_credentials(*, username: str, password: str) -> None:
+    if len(username) < 3:
+        raise RuntimeError("ADMIN_USERNAME must be at least 3 characters.")
+    if any(char.isspace() for char in username):
+        raise RuntimeError("ADMIN_USERNAME must not contain spaces.")
+    if len(password) < 12:
+        raise RuntimeError("ADMIN_PASSWORD must be at least 12 characters.")
+    if any(char.isspace() for char in password):
+        raise RuntimeError("ADMIN_PASSWORD must not contain spaces.")
+    if not any(char.isalpha() for char in password) or not any(char.isdigit() for char in password):
+        raise RuntimeError("ADMIN_PASSWORD must include letters and numbers.")
+
+
+def _seed_initial_manager_for_production(db: Session) -> None:
+    manager = _first_user_by_role(db, UserRole.MANAGER.value)
+    admin_username, admin_password, admin_name = _production_admin_seed_credentials()
+
+    if manager is not None:
+        changes = False
+        if not manager.active:
+            manager.active = True
+            changes = True
+        if not str(manager.username or "").strip() or not str(manager.password_hash or "").strip():
+            if not admin_username or not admin_password:
+                raise RuntimeError(
+                    "Manager account exists but is missing credentials. "
+                    "Set ADMIN_USERNAME and ADMIN_PASSWORD to repair it at startup."
+                )
+            _validate_production_admin_seed_credentials(username=admin_username, password=admin_password)
+            username_owner = db.execute(select(User).where(User.username == admin_username)).scalar_one_or_none()
+            if username_owner is not None and int(username_owner.id) != int(manager.id):
+                raise RuntimeError(
+                    f"ADMIN_USERNAME '{admin_username}' is already used by another account."
+                )
+            manager.username = admin_username
+            manager.password_hash = hash_password(admin_password)
+            manager.name = str(manager.name or "").strip() or admin_name
+            changes = True
+        if changes:
+            db.commit()
+        return
+
+    if not admin_username or not admin_password:
+        raise RuntimeError(
+            "No manager account found. Set ADMIN_USERNAME and ADMIN_PASSWORD for first production bootstrap."
+        )
+    _validate_production_admin_seed_credentials(username=admin_username, password=admin_password)
+
+    existing_user = db.execute(select(User).where(User.username == admin_username)).scalar_one_or_none()
+    if existing_user is not None:
+        raise RuntimeError(
+            f"ADMIN_USERNAME '{admin_username}' already exists with role '{existing_user.role}'. "
+            "Use a different username or promote that account to manager manually."
+        )
+
+    db.add(
+        User(
+            name=admin_name,
+            username=admin_username,
+            password_hash=hash_password(admin_password),
+            role=UserRole.MANAGER.value,
+            active=True,
+        )
+    )
+    db.commit()
+
+
 def _seed_default_users_for_development(db: Session) -> None:
     defaults = [
         (
@@ -959,6 +1033,7 @@ def seed_development_data(db: Session) -> None:
 
 
 def bootstrap_production_data(db: Session) -> None:
+    _seed_initial_manager_for_production(db)
     _run_common_bootstrap(db, allow_schema_mutation=False)
 
 
